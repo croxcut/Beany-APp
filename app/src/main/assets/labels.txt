@@ -1,0 +1,7 @@
+healthy
+pod-rot
+pod-borer
+anthracnose-leaf
+healthy-cacao-leaf
+frost-pod
+background

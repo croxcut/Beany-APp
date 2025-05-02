@@ -1,0 +1,12 @@
+[
+  {
+    "label": "healthy",
+    "description": "Cacao pod detected",
+    "actionPlan": "Harvest the pod when it ripens."
+  },
+  {
+    "label": "pod-rot",
+    "description": "Pod rot in cacao is a fungal disease primarily caused by Phytophthora species (especially Phytophthora palmivora). It leads to brown or black lesions on cacao pods, eventually causing them to rot and fall prematurely. The disease thrives in humid, wet environments and can significantly reduce yield and bean quality.",
+    "actionPlan": "• Remove and Destroy Infected Pods – Regularly inspect trees and immediately remove rotting or fallen pods.\n• Improve Drainage – Avoid waterlogging by ensuring good soil drainage around cacao trees.\n• Prune for Airflow – Prune trees to improve air circulation and reduce humidity.\n• Apply Fungicides – Use recommended copper-based fungicides or biological control agents during wet seasons.\n• Use Resistant Varieties – Plant cacao varieties known to have resistance or tolerance to Phytophthora.\n• Regular Monitoring – Inspect plantations frequently, especially during and after rains."
+  }
+]
