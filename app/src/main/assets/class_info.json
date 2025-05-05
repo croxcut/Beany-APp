@@ -1,12 +1,37 @@
 [
   {
+    "label": "anthracnose",
+    "description": "Anthracnose is a fungal disease caused primarily by Colletotrichum gloeosporioides. It affects cacao leaves, causing dark, sunken spots that may merge, leading to leaf blight and early defoliation. In severe cases, it also infects twigs and pods, reducing plant vigor and yield.",
+    "actionPlan": "• Remove and Destroy Infected Leaves – Regularly inspect and prune infected leaves to reduce spore spread.\n• Avoid Overhead Irrigation – Use ground-level watering to minimize moisture on foliage.\n• Apply Fungicides – Spray appropriate fungicides such as copper-based products during rainy periods.\n• Improve Air Circulation – Prune trees and manage spacing to reduce humidity in the canopy.\n• Use Resistant Varieties – Consider using cultivars less susceptible to anthracnose where available.\n• Clean Tools – Always disinfect pruning tools to prevent spread between plants."
+  },
+  {
     "label": "healthy",
     "description": "Cacao pod detected",
     "actionPlan": "Harvest the pod when it ripens."
   },
   {
+    "label": "healthy-cacao",
+    "description": "Healthy cacao trees exhibit vigorous growth, glossy green leaves, and pest-free pods. Maintaining tree health is essential to maximizing yield and preventing disease outbreaks.",
+    "actionPlan": "• Regular Monitoring – Observe trees frequently for early signs of pests or disease.\n• Balanced Fertilization – Apply nutrients based on soil testing to support strong growth.\n• Proper Irrigation – Ensure consistent watering without over-saturating the soil.\n• Pruning and Canopy Management – Maintain optimal tree shape and airflow.\n• Mulching – Use organic mulch to retain moisture, suppress weeds, and enhance soil quality.\n• Integrated Pest Management – Combine cultural, biological, and chemical methods for long-term plant health."
+  },
+  {
+    "label": "healthy-leaf",
+    "description": "A healthy cacao leaf is vibrant green, smooth, and free of spots, holes, or discoloration. Healthy foliage indicates strong disease resistance and optimal growing conditions.",
+    "actionPlan": "• Preventive Sprays – Use organic foliar sprays or biofungicides to boost leaf immunity.\n• Leaf Inspection – Regularly check for pests (like mirids or aphids) and early symptoms of disease.\n• Minimize Leaf Wetness – Avoid water splash on leaves by watering at the base.\n• Nutrient Management – Apply foliar fertilizers if deficiencies are noticed.\n• Environmental Control – Manage shade and airflow to prevent fungal development.\n• Clean Surroundings – Remove weeds and plant debris that may harbor pathogens."
+  },
+  {
     "label": "pod-rot",
     "description": "Pod rot in cacao is a fungal disease primarily caused by Phytophthora species (especially Phytophthora palmivora). It leads to brown or black lesions on cacao pods, eventually causing them to rot and fall prematurely. The disease thrives in humid, wet environments and can significantly reduce yield and bean quality.",
     "actionPlan": "• Remove and Destroy Infected Pods – Regularly inspect trees and immediately remove rotting or fallen pods.\n• Improve Drainage – Avoid waterlogging by ensuring good soil drainage around cacao trees.\n• Prune for Airflow – Prune trees to improve air circulation and reduce humidity.\n• Apply Fungicides – Use recommended copper-based fungicides or biological control agents during wet seasons.\n• Use Resistant Varieties – Plant cacao varieties known to have resistance or tolerance to Phytophthora.\n• Regular Monitoring – Inspect plantations frequently, especially during and after rains."
+  },
+  {
+    "label": "pod-borer",
+    "description": "Cacao pod borer (Conopomorpha cramerella) is a moth pest whose larvae bore into cacao pods, feeding on the beans and causing premature ripening, poor-quality beans, and significant yield loss. Infestation signs include uneven ripening, premature yellowing, and small exit holes on the pod surface.",
+    "actionPlan": "• Frequent Harvesting – Harvest ripe pods every 1–2 weeks to break the pest’s life cycle.\n• Pod Sleeving – Wrap young pods in plastic or paper sleeves to prevent egg-laying by the moths.\n• Sanitation – Collect and destroy infested or damaged pods to reduce pest population.\n• Biological Control – Use natural predators or parasitoids like Trichogramma wasps.\n• Prune Trees – Maintain open canopy for better light and air, which discourages moth activity.\n• Monitor with Traps – Use pheromone traps to detect and reduce moth populations early."
+  },
+  {
+    "label": "frosty-pod",
+    "description": "Frosty pod rot, caused by the fungus Moniliophthora roreri, is a major cacao disease that affects developing pods. It causes whitish fungal growth that resembles frost on the pod surface. Infected pods eventually become mummified and fail to develop viable beans, leading to severe crop losses if uncontrolled.",
+    "actionPlan": "• Remove and Destroy Infected Pods – Regularly collect and burn or deeply bury all infected pods to prevent spore spread.\n• Frequent Harvesting – Harvest healthy pods frequently to reduce the window for infection.\n• Prune Trees – Maintain an open canopy to reduce humidity and improve airflow.\n• Sanitation – Keep the field clean by removing mummified pods and fallen debris.\n• Use Resistant Varieties – Plant resistant or tolerant cacao cultivars where available.\n• Train Farmers – Educate field workers on early symptom detection and proper sanitation practices."
   }
 ]

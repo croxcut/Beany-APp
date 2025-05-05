@@ -1,6 +1,7 @@
 package com.example.myapplication.info
 
 import android.content.Context
+import android.util.Log
 
 val classInfoMap = mapOf(
     "healthy" to ("Cacao pod detected" to "Harvest the pod when it ripens."),
@@ -21,4 +22,16 @@ fun loadClassInfoMap(context: Context): Map<String, Pair<String, String>> {
     }
 
     return map
+}
+
+fun loadInstructions(context: Context, fileName: String = "instructions.json"): List<String> {
+    return try {
+        val inputStream = context.assets.open(fileName)
+        val jsonString = inputStream.bufferedReader().use { it.readText() }
+        val jsonArray = org.json.JSONArray(jsonString)
+        List(jsonArray.length()) { i -> jsonArray.getString(i) }
+    } catch (e: Exception) {
+        Log.e("Instructions", "Failed to load instructions", e)
+        emptyList()
+    }
 }

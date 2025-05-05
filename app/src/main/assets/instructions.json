@@ -1,0 +1,14 @@
+[
+  "Make sure the camera is allowed in permissions.",
+  "Ensure sufficient lighting for better detection.",
+  "Hold your device steady.",
+  "Point the camera directly at the object.",
+  "Avoid obstructions.",
+  "Keep a distance of around 30cm.",
+  "Use the rear camera for best performance.",
+  "Wait for the bounding boxes to appear.",
+  "If detection fails, try adjusting the angle.",
+  "Results will appear in the debug overlay.",
+  "Tap anywhere to refocus.",
+  "Swipe down to refresh instructions."
+]

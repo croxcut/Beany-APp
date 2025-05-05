@@ -12,4 +12,8 @@ data class AABB(
     val cnf: Float,
     val cls: Int,
     val clsName: String
-)
+) {
+    // Add computed property for area
+    val area: Float
+        get() = w * h
+}

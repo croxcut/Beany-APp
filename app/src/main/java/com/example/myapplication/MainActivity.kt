@@ -10,6 +10,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
+import com.example.myapplication.screen.AppNavigation
 
 class MainActivity : ComponentActivity() {
     companion object {

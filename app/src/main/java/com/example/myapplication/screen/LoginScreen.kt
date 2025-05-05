@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -239,5 +240,21 @@ fun InputFields(navController: NavController) {
         ) {
             Text("Login", fontSize = 20.sp)
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row {
+            Text(text = "Don't have an account? ")
+            Text(
+                text = "Sign up",
+                color = Color.Blue,
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .clickable {
+                        navController.navigate("signup")
+                    }
+            )
+        }
+
     }
 }

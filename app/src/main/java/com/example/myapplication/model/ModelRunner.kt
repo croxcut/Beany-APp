@@ -22,6 +22,8 @@ class ModelRunner(
     private val labelPath: String,
     private val detectorListener: DetectorListener
 ) {
+    @Volatile
+    private var isCleared = false
 
     private var interpreter: Interpreter? = null
     private var labels = mutableListOf<String>()
@@ -67,13 +69,19 @@ class ModelRunner(
         }
     }
 
+    fun isCleared(): Boolean {
+        return interpreter == null
+    }
+
     fun clear() {
+        isCleared = true
         interpreter?.close()
         interpreter = null
     }
 
     fun detect(frame: Bitmap) {
         interpreter ?: return
+        if (isCleared) return
         if (tensorWidth == 0) return
         if (tensorHeight == 0) return
         if (numChannel == 0) return
@@ -196,6 +204,6 @@ class ModelRunner(
         private val INPUT_IMAGE_TYPE = DataType.FLOAT32
         private val OUTPUT_IMAGE_TYPE = DataType.FLOAT32
         private const val CONFIDENCE_THRESHOLD = 0.3F
-        private const val IOU_THRESHOLD = 0.5F
+        private const val IOU_THRESHOLD = 0.6F
     }
 }

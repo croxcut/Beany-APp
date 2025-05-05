@@ -60,11 +60,19 @@ import android.provider.MediaStore
 import android.content.ContentValues
 import android.os.Build
 import android.os.Environment
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.model.DetectionViewModel
 
 @Composable
 fun SingleImageDetection() {
     val context = LocalContext.current
     var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
+
+    val viewModel: DetectionViewModel = viewModel()
 
     LaunchedEffect(Unit) {
         classInfoMap = loadClassInfoMap(context)
@@ -110,40 +118,6 @@ fun SingleImageDetection() {
         }
     }
 
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success) {
-            photoUri.value?.let { uri ->
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val tempBitmap = BitmapFactory.decodeStream(inputStream)
-                bitmap = tempBitmap
-                inputStream?.close()
-
-                val model = ModelRunner(
-                    context = context,
-                    modelPath = MODEL_PATH,
-                    labelPath = LABELS_PATH,
-                    detectorListener = object : ModelRunner.DetectorListener {
-                        override fun onEmptyDetect() {
-                            boxes = emptyList()
-                            detectedLabels = emptyList()
-                        }
-
-                        override fun onDetect(boundingBoxes: List<AABB>, inferenceTime: Long) {
-                            boxes = boundingBoxes
-                            detectedLabels = boundingBoxes.map { it.clsName }.distinct()
-                        }
-                    }
-                )
-
-                model.setup()
-                model.detect(tempBitmap)
-                model.clear()
-            }
-        }
-    }
-
     fun createImageFile(context: Context): Uri {
         val imageFile = java.io.File(
             context.getExternalFilesDir(null),
@@ -156,131 +130,98 @@ fun SingleImageDetection() {
         )
     }
 
-    fun saveBitmapToGallery(context: Context, bitmap: Bitmap, fileName: String = "detected_image_${System.currentTimeMillis()}.jpg") {
-        val contentValues = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
-        }
-
-        val contentResolver = context.contentResolver
-        val uri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-        uri?.let {
-            contentResolver.openOutputStream(it)?.use { outputStream ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                contentValues.clear()
-                contentValues.put(MediaStore.Images.Media.IS_PENDING, 0)
-                contentResolver.update(it, contentValues, null, null)
-            }
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Beige),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Box(modifier = Modifier.weight(1f)) {
+            bitmap?.let { bmp ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(width = 2.dp, color = Brown, shape = RoundedCornerShape(16.dp))
+                ) {
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(onClick = { launcher.launch("image/*") }) {
-                Text("Pick Image from Gallery")
-            }
-
-            Button(onClick = {
-                val uri = createImageFile(context)
-                photoUri.value = uri
-                takePictureLauncher.launch(uri)
-            }) {
-                Text("Take Photo")
+                    DetectionOverlay(
+                        boxes = boxes,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        bitmap?.let { bmp ->
-            Box(
+        if (boxes.isNotEmpty()) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
+                    .weight(1f)
+                    .padding(8.dp)
+                    .verticalScroll(rememberScrollState())
                     .clip(RoundedCornerShape(16.dp))
-                    .border(width = 2.dp, color = Brown, shape = RoundedCornerShape(16.dp))
+                    .background(Brown)
             ) {
-                Image(
-                    bitmap = bmp.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                detectedLabels.distinct().forEach { label ->
+                    val (description, actionPlan) = classInfoMap[label] ?: ("No description available" to "No action defined")
 
-                DetectionOverlay(
-                    boxes = boxes,
-                    modifier = Modifier.matchParentSize()
-                )
-            }
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text(
+                            text = "Condition: $label",
+                            fontSize = 16.sp,
+                            color = Color.White,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
 
+                        Text(
+                            text = "Description:",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "    - $description",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Action Plan:",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "    - $actionPlan",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
 
-            if (boxes.isEmpty()) {
-                Text(
-                    text = "No cacao/coffee detected",
-                    color = Color.Red,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            } else {
-                Text(
-                    text = "Detected: ${detectedLabels.joinToString()}",
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            }
-
-            detectedLabels.forEach { label ->
-                val (description, actionPlan) = classInfoMap[label] ?: ("No description available" to "No action defined")
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Brown)
-                        .padding(8.dp)
-                        .verticalScroll(rememberScrollState()),
-                ) {
-                    Text(
-                        text = "Condition: $label",
-                        fontSize = 16.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(1.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Description: $description",
-                        fontSize = 14.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(1.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Action Plan: $actionPlan",
-                        fontSize = 14.sp,
-                        color = Color.White,
-                        modifier = Modifier.padding(1.dp)
-                    )
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
+            }
+        }
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+        ) {
+            Button(onClick = { launcher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = "Select Image", modifier = Modifier.size(24.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Select Image")
             }
         }
     }
