@@ -62,28 +62,27 @@ import android.os.Build
 import android.os.Environment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.info.loadInstructions
 import com.example.myapplication.model.DetectionViewModel
+import org.json.JSONArray
 
 @Composable
 fun SingleImageDetection() {
     val context = LocalContext.current
-    var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
-
     val viewModel: DetectionViewModel = viewModel()
 
-    LaunchedEffect(Unit) {
-        classInfoMap = loadClassInfoMap(context)
-    }
+    var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
+    var instructions by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showInstructions by remember { mutableStateOf(true) }
 
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var boxes by remember { mutableStateOf<List<AABB>>(emptyList()) }
     var detectedLabels by remember { mutableStateOf<List<String>>(emptyList()) }
-
-    val photoUri = remember { mutableStateOf<Uri?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -108,6 +107,7 @@ fun SingleImageDetection() {
                     override fun onDetect(boundingBoxes: List<AABB>, inferenceTime: Long) {
                         boxes = boundingBoxes
                         detectedLabels = boundingBoxes.map { it.clsName }.distinct()
+                        showInstructions = false
                     }
                 }
             )
@@ -118,16 +118,9 @@ fun SingleImageDetection() {
         }
     }
 
-    fun createImageFile(context: Context): Uri {
-        val imageFile = java.io.File(
-            context.getExternalFilesDir(null),
-            "Pictures/photo_${System.currentTimeMillis()}.jpg"
-        )
-        return androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            imageFile
-        )
+    LaunchedEffect(Unit) {
+        classInfoMap = loadClassInfoMap(context)
+        instructions = loadInstructions(context)
     }
 
     Column(
@@ -183,31 +176,32 @@ fun SingleImageDetection() {
                         )
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
-                            text = "Description:",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "    - $description",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
+                        Text(text = "Description:", fontSize = 14.sp, color = Color.White)
+                        Text(text = "    - $description", fontSize = 14.sp, color = Color.White)
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
-                            text = "Action Plan:",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "    - $actionPlan",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
+                        Text(text = "Action Plan:", fontSize = 14.sp, color = Color.White)
+                        Text(text = "    - $actionPlan", fontSize = 14.sp, color = Color.White)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+
+        if (showInstructions && instructions.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Brown)
+                    .padding(12.dp)
+            ) {
+                Text("Instructions:", fontSize = 16.sp, color = Color.White)
+                Spacer(modifier = Modifier.height(4.dp))
+                instructions.forEach { instruction ->
+                    Text("• $instruction", fontSize = 14.sp, color = Color.White)
                 }
             }
         }
@@ -216,9 +210,13 @@ fun SingleImageDetection() {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .padding(16.dp)
-                .fillMaxWidth(),
+                .fillMaxWidth()
         ) {
-            Button(onClick = { launcher.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = { launcher.launch("image/*") },
+                colors = ButtonDefaults.buttonColors(containerColor = Brown),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Select Image", modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Select Image")

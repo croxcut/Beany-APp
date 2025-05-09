@@ -28,6 +28,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.info.loadClassInfoMap
 import com.example.myapplication.info.loadInstructions
 import com.example.myapplication.model.AABB
 import com.example.myapplication.model.DetectionViewModel
@@ -138,26 +139,83 @@ fun RealtimeDetectionScreen() {
             )
         }
 
-        InstructionsPanel()
+        val context = LocalContext.current
+        var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
+
+        LaunchedEffect(Unit) {
+            classInfoMap = loadClassInfoMap(context)
+        }
+
+        val detectedLabels = overlayBoxes.map { it.clsName }.distinct()
+
+        if (detectedLabels.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState())
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Brown)
+            ) {
+                detectedLabels.forEach { label ->
+                    val (description, actionPlan) = classInfoMap[label] ?: ("No description available" to "No action defined")
+
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
+                        Text(
+                            text = "Condition: $label",
+                            fontSize = 16.sp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Description:",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "    - $description",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text = "Action Plan:",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "    - $actionPlan",
+                            fontSize = 14.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun InstructionsPanel() {
-    val context = LocalContext.current
-    Box(Modifier
-        .fillMaxWidth()
-        .padding(16.dp)
-        .height(200.dp)) {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            Text("Instructions:", fontSize = 18.sp, color = Color.Black)
-            Spacer(Modifier.height(8.dp))
-            loadInstructions(context).forEachIndexed { i, text ->
-                Text("${i + 1}. $text", fontSize = 14.sp, color = Color.Black)
-                Spacer(Modifier.height(4.dp))
-            }
-        }
-    }
+//    val context = LocalContext.current
+//    Box(Modifier
+//        .fillMaxWidth()
+//        .padding(16.dp)
+//        .height(200.dp)) {
+//        Column(Modifier.verticalScroll(rememberScrollState())) {
+//            Text("Instructions:", fontSize = 18.sp, color = Color.Black)
+//            Spacer(Modifier.height(8.dp))
+//            loadInstructions(context).forEachIndexed { i, text ->
+//                Text("${i + 1}. $text", fontSize = 14.sp, color = Color.Black)
+//                Spacer(Modifier.height(4.dp))
+//            }
+//        }
+//    }
 }
 
 private fun startCamera(

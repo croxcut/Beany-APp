@@ -1,11 +1,14 @@
 package com.example.myapplication.screen
 
+import android.R.attr.bitmap
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.net.Uri
 import android.os.Environment
+import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,6 +54,8 @@ import androidx.compose.material.icons.filled.Camera
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.viewinterop.AndroidView
+import coil.size.Size
 import java.nio.ByteBuffer
 import java.io.File
 import java.io.FileOutputStream
@@ -59,89 +64,72 @@ import java.util.concurrent.Executors
 @Composable
 fun CameraImageDetection() {
     val context = LocalContext.current
-    var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val executor = remember { Executors.newSingleThreadExecutor() }
 
-    val viewModel: DetectionViewModel = viewModel()
+    val previewView = remember { PreviewView(context) }
+    var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
 
-    LaunchedEffect(Unit) {
-        classInfoMap = loadClassInfoMap(context)
-    }
-
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var boxes by remember { mutableStateOf<List<AABB>>(emptyList()) }
     var detectedLabels by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    val photoUri = remember { mutableStateOf<Uri?>(null) }
+    var classInfoMap by remember { mutableStateOf<Map<String, Pair<String, String>>>(emptyMap()) }
+    val viewModel: DetectionViewModel = viewModel()
 
-    fun createImageFile(context: Context): Uri {
-        val imageFile = java.io.File(
-            context.getExternalFilesDir(Environment.DIRECTORY_PICTURES),
-            "photo_${System.currentTimeMillis()}.jpg"
-        )
-        return androidx.core.content.FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            imageFile
-        )
-    }
+    var detectionDone by remember { mutableStateOf(false) }
 
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture()
-    ) { isSuccess ->
-        if (isSuccess) {
-            photoUri.value?.let { uri ->
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val tempBitmap = BitmapFactory.decodeStream(inputStream)
-                bitmap = tempBitmap
-                inputStream?.close()
-                val model = ModelRunner(
-                    context = context,
-                    modelPath = MODEL_PATH,
-                    labelPath = LABELS_PATH,
-                    detectorListener = object : ModelRunner.DetectorListener {
-                        override fun onEmptyDetect() {
-                            boxes = emptyList()
-                            detectedLabels = emptyList()
-                        }
+    LaunchedEffect(Unit) {
+        classInfoMap = loadClassInfoMap(context)
 
-                        override fun onDetect(boundingBoxes: List<AABB>, inferenceTime: Long) {
-                            boxes = boundingBoxes
-                            detectedLabels = boundingBoxes.map { it.clsName }.distinct()
-                        }
-                    }
-                )
+        val cameraProvider = ProcessCameraProvider.getInstance(context).get()
 
-                model.setup()
-                model.detect(tempBitmap)
-                model.clear()
-            }
+        val preview = Preview.Builder().build().also {
+            it.setSurfaceProvider(previewView.surfaceProvider)
         }
-    }
 
-    val launchCamera = remember {
-        {
-            val imageFileUri = createImageFile(context)
-            photoUri.value = imageFileUri
-            takePictureLauncher.launch(imageFileUri)
-        }
+        imageCapture = ImageCapture.Builder()
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+            .setTargetRotation(previewView.display.rotation)
+            .build()
+
+        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+        cameraProvider.unbindAll()
+        cameraProvider.bindToLifecycle(
+            lifecycleOwner,
+            cameraSelector,
+            preview,
+            imageCapture
+        )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Beige),
+            .background(Beige)
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        bitmap?.let { bmp ->
+        if (bitmap == null) {
+            AndroidView(
+                factory = { previewView },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+                    .clip(RoundedCornerShape(12.dp))
+            )
+        } else {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(width = 2.dp, color = Brown, shape = RoundedCornerShape(16.dp))
+                    .height(400.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(2.dp, Brown)
             ) {
                 Image(
-                    bitmap = bmp.asImageBitmap(),
+                    bitmap = bitmap!!.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -154,51 +142,124 @@ fun CameraImageDetection() {
             }
         }
 
-        if (boxes.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (!detectionDone) {
+            Button(
+                onClick = {
+                    val contentValues = ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, "IMG_${System.currentTimeMillis()}")
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DCIM + "/MyApp")
+                    }
+
+                    val outputOptions = ImageCapture.OutputFileOptions.Builder(
+                        context.contentResolver,
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        contentValues
+                    ).build()
+
+                    imageCapture?.takePicture(
+                        outputOptions,
+                        executor,
+                        object : ImageCapture.OnImageSavedCallback {
+                            override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                                val savedUri = output.savedUri
+                                val mainExecutor = ContextCompat.getMainExecutor(context)
+                                mainExecutor.execute {
+                                    imageUri = savedUri
+
+                                    try {
+                                        val inputStream = context.contentResolver.openInputStream(savedUri!!)
+                                        val capturedBitmap = BitmapFactory.decodeStream(inputStream)
+                                        inputStream?.close()
+
+                                        bitmap = capturedBitmap
+
+                                        val model = ModelRunner(
+                                            context = context,
+                                            modelPath = MODEL_PATH,
+                                            labelPath = LABELS_PATH,
+                                            detectorListener = object : ModelRunner.DetectorListener {
+                                                override fun onEmptyDetect() {
+                                                    boxes = emptyList()
+                                                    detectedLabels = emptyList()
+                                                }
+
+                                                override fun onDetect(boundingBoxes: List<AABB>, inferenceTime: Long) {
+                                                    boxes = boundingBoxes
+                                                    detectedLabels = boundingBoxes.map { it.clsName }.distinct()
+                                                }
+                                            }
+                                        )
+
+                                        model.setup()
+                                        model.detect(capturedBitmap)
+                                        model.clear()
+
+                                        detectionDone = true
+
+                                        Toast.makeText(context, "Image captured and analyzed!", Toast.LENGTH_SHORT).show()
+                                    } catch (e: Exception) {
+                                        Log.e("DetectionError", "Failed to analyze image", e)
+                                    }
+                                }
+                            }
+
+                            override fun onError(exception: ImageCaptureException) {
+                                val mainExecutor = ContextCompat.getMainExecutor(context)
+                                mainExecutor.execute {
+                                    Toast.makeText(
+                                        context,
+                                        "Capture failed: ${exception.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                Log.e("CameraCapture", "Image capture failed", exception)
+                            }
+                        }
+                    )
+                }
+            ) {
+                Icon(Icons.Default.Camera, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Capture Image")
+            }
+        } else {
+            Button(
+                onClick = {
+                    imageUri = null
+                    bitmap = null
+                    boxes = emptyList()
+                    detectedLabels = emptyList()
+                    detectionDone = false
+                }
+            ) {
+                Icon(Icons.Default.Camera, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Capture Image Again")
+            }
+        }
+
+        if (detectedLabels.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(8.dp)
-                    .verticalScroll(rememberScrollState())
                     .clip(RoundedCornerShape(16.dp))
                     .background(Brown)
+                    .verticalScroll(rememberScrollState())
+                    .padding(8.dp)
             ) {
                 detectedLabels.forEach { label ->
                     val (description, actionPlan) = classInfoMap[label] ?: ("No description available" to "No action defined")
 
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
-                        Text(
-                            text = "Condition: $label",
-                            fontSize = 16.sp,
-                            color = Color.White,
-                            modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center
-                        )
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text("Condition: $label", color = Color.White, fontSize = 16.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Description:",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "    - $description",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = "Action Plan:",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "    - $actionPlan",
-                            fontSize = 14.sp,
-                            color = Color.White
-                        )
+                        Text("Description: - $description", color = Color.White, fontSize = 14.sp)
+                        Text("Action Plan: - $actionPlan", color = Color.White, fontSize = 14.sp)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -206,15 +267,144 @@ fun CameraImageDetection() {
             }
         }
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-        ) {
-            Button(onClick = launchCamera, modifier = Modifier.fillMaxWidth()) {
-                Text("Capture Image")
-            }
+        if (detectionDone && detectedLabels.isEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "No disease detected.",
+                fontSize = 16.sp,
+                color = Color.DarkGray,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
         }
     }
 }
+
+
+
+//@Composable
+//fun CameraImageDetection() {
+//    val context = LocalContext.current
+//    val lifecycleOwner = LocalLifecycleOwner.current
+//    val executor = remember { Executors.newSingleThreadExecutor() }
+//
+//    val previewView = remember { PreviewView(context) }
+//    var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
+//    var imageUri by remember { mutableStateOf<Uri?>(null) }
+//
+//    LaunchedEffect(Unit) {
+//        val cameraProvider = ProcessCameraProvider.getInstance(context).get()
+//
+//        val preview = Preview.Builder().build().also {
+//            it.setSurfaceProvider(previewView.surfaceProvider)
+//        }
+//
+//        imageCapture = ImageCapture.Builder()
+//            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+//            .setTargetRotation(previewView.display.rotation)
+//            .build()
+//
+//        val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+//
+//        cameraProvider.unbindAll()
+//        cameraProvider.bindToLifecycle(
+//            lifecycleOwner,
+//            cameraSelector,
+//            preview,
+//            imageCapture
+//        )
+//    }
+//
+//    Column(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .background(Beige)
+//            .padding(16.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally
+//    ) {
+//        if (imageUri == null) {
+//            AndroidView(
+//                factory = { previewView },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(400.dp)
+//                    .clip(RoundedCornerShape(12.dp))
+//            )
+//        } else {
+//            val bitmap = remember(imageUri) {
+//                imageUri?.let {
+//                    BitmapFactory.decodeStream(context.contentResolver.openInputStream(it))
+//                }
+//            }
+//            bitmap?.let {
+//                Image(
+//                    bitmap = it.asImageBitmap(),
+//                    contentDescription = null,
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .height(400.dp)
+//                        .clip(RoundedCornerShape(12.dp)),
+//                    contentScale = ContentScale.Crop
+//                )
+//            }
+//        }
+//
+//        Spacer(modifier = Modifier.height(16.dp))
+//
+//        Button(
+//            onClick = {
+//                val contentValues = ContentValues().apply {
+//                    put(MediaStore.MediaColumns.DISPLAY_NAME, "IMG_${System.currentTimeMillis()}")
+//                    put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+//                    put(
+//                        MediaStore.MediaColumns.RELATIVE_PATH,
+//                        Environment.DIRECTORY_DCIM + "/MyApp"
+//                    )
+//                }
+//
+//                val outputOptions = ImageCapture.OutputFileOptions.Builder(
+//                    context.contentResolver,
+//                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+//                    contentValues
+//                ).build()
+//
+//                imageCapture?.takePicture(
+//                    outputOptions,
+//                    executor,
+//                    object : ImageCapture.OnImageSavedCallback {
+//                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+//                            val savedUri = output.savedUri
+//                            val mainExecutor = ContextCompat.getMainExecutor(context)
+//                            mainExecutor.execute {
+//                                imageUri = savedUri
+//                                Toast.makeText(
+//                                    context,
+//                                    "Image saved to gallery!",
+//                                    Toast.LENGTH_SHORT
+//                                ).show()
+//                            }
+//                        }
+//
+//                        override fun onError(exception: ImageCaptureException) {
+//                            val mainExecutor = ContextCompat.getMainExecutor(context)
+//                            mainExecutor.execute {
+//                                Toast.makeText(
+//                                    context,
+//                                    "Capture failed: ${exception.message}",
+//                                    Toast.LENGTH_LONG
+//                                ).show()
+//                            }
+//                            Log.e("CameraCapture", "Image capture failed", exception)
+//                        }
+//                    }
+//                )
+//            }
+//        ) {
+//            Icon(Icons.Default.Camera, contentDescription = null)
+//            Spacer(modifier = Modifier.width(8.dp))
+//            Text("Capture Image")
+//        }
+//    }
+//}
